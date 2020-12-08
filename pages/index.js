@@ -1,65 +1,53 @@
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
+import dbConnect from '../utils/dbConnect'
+import User from '../models/User'
+import { useState } from 'react'
+import fetch from 'unfetch'
+import _ from 'lodash'
 
-export default function Home() {
+ function Home({ users }) {
+
+  const [userState, setUserState] =   useState(users)
+  var handleSearch = _.debounce((val) => {
+    fetch('/api/users/search?term='+val, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+
+    })
+  .then( r => r.json() )
+  .then( data => setUserState(data.users) )
+  }, 100);
+
   return (
-    <div className={styles.container}>
+    <div>
       <Head>
-        <title>Create Next App</title>
+        <title> Search Page App</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
+      <h3>Search Page</h3>
+        <input type="search" onChange={e => handleSearch(e.target.value)} name="search" placeholder="search user" />
+      <table>
+        {
+          userState.map((user) => (<tr>
+            <td>{user.displayName}</td>
+            <td>{user.email}</td>
+            <td>{user.phoneNumber}</td>
+          </tr>))
+        }
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/import?filter=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+      </table>
     </div>
   )
 }
+
+
+export async function getServerSideProps() {
+  await dbConnect()
+  const result = await User.find({}).limit(50).lean();
+  return { props: { users: result.map(({displayName, email, phoneNumber}) => ({ displayName, email, phoneNumber}))  } }
+}
+
+export default Home;
